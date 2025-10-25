@@ -12,9 +12,11 @@ export default function Home() {
     const [feedbackColor, setFeedbackColor] = useState<string>('text-gray-700');
     const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
-    const getRandomWord = useCallback(() => {
-        const randomIndex = Math.floor(Math.random() * words.length);
-        setCurrentWord(words[randomIndex]);
+    const getRandomWord = useCallback(async() => {
+        const respond = await fetch("/api/word");
+        const result = await respond.json()
+
+        setCurrentWord(result.data);
         setSentence('');
         setScore(0);
         setFeedbackColor('text-gray-700');
