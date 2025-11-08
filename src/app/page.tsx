@@ -13,10 +13,10 @@ export default function Home() {
     const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
     const getRandomWord = useCallback(async() => {
-        const respond = await fetch("/api/word");
-        const result = await respond.json()
+        const respond = await fetch("http://localhost:8000/api/word");
+        const data = await respond.json()
 
-        setCurrentWord(result.data);
+        setCurrentWord(data);
         setSentence('');
         setScore(0);
         setFeedbackColor('text-gray-700');
@@ -55,7 +55,7 @@ export default function Home() {
                 word: currentWord.word,
                 sentence: sentence,
                 score: newScore,
-                difficulty: currentWord.difficulty,
+                difficulty: currentWord.difficulty_level,
                 timestamp: new Date().toISOString(),
             });
             localStorage.setItem('wordHistory', JSON.stringify(history));
@@ -67,8 +67,8 @@ export default function Home() {
         getRandomWord();
     };
 
-    const getDifficultyColor = (difficulty: Difficulty) => {
-        switch (difficulty) {
+    const getDifficultyColor = (difficulty_level: string) => {
+        switch (difficulty_level) {
             case "Beginner":
                 return "bg-green-200 text-green-800";
             case "Intermediate":
@@ -91,11 +91,11 @@ export default function Home() {
             <div className="bg-white p-8 rounded-2xl shadow-xl mb-6 border border-gray-100 transform hover:scale-105 transition-transform duration-300 ease-in-out">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
                     <h2 className="text-3xl md:text-4xl font-bold text-primary mb-2 sm:mb-0">{currentWord.word}</h2>
-                    <span className={`px-4 py-1 rounded-full text-sm font-semibold ${getDifficultyColor(currentWord.difficulty)} shadow-md`}>
-                        {currentWord.difficulty}
+                    <span className={`px-4 py-1 rounded-full text-sm font-semibold ${getDifficultyColor(currentWord.difficulty_level)} shadow-md`}>
+                        {currentWord.difficulty_level}
                     </span>
                 </div>
-                <p className="text-lg md:text-xl text-gray-700 mb-6 leading-relaxed">{currentWord.meaning}</p>
+                <p className="text-lg md:text-xl text-gray-700 mb-6 leading-relaxed">{currentWord.definition}</p>
 
                 <div className="mb-6">
                     <label htmlFor="sentence" className="block text-base font-medium text-gray-700 mb-2">Your Sentence:</label>
