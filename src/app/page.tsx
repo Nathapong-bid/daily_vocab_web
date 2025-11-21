@@ -2,24 +2,25 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { words } from '@/data/words';
-import { Word, Difficulty } from '@/types';
-import { scoreSentence } from '@/lib/scoring';
+import { Word } from '@/types';
 
 export default function Home() {
     const [currentWord, setCurrentWord] = useState<Word | null>(null);
     const [sentence, setSentence] = useState<string>('');
-    const [score, setScore] = useState<number>(0);
+    const [score, setScore] = useState<number | null>(null);
     const [feedbackColor, setFeedbackColor] = useState<string>('text-gray-700');
     const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+    const [suggestion, setSuggestion] = useState<string>('');
 
-    const getRandomWord = useCallback(async() => {
+    const getRandomWord = useCallback(async () => {
         const respond = await fetch("http://localhost:8000/api/word");
-        const data = await respond.json()
+        const data = await respond.json();
 
         setCurrentWord(data);
         setSentence('');
-        setScore(0);
+        setScore(null);
         setFeedbackColor('text-gray-700');
+        setSuggestion('');
         setIsSubmitted(false);
     }, []);
 
@@ -29,62 +30,65 @@ export default function Home() {
 
     const handleSentenceChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setSentence(e.target.value);
-        // Reset score and feedback if user starts typing again after submission
         if (isSubmitted) {
-            setScore(0);
+            setScore(null);
             setFeedbackColor('text-gray-700');
+            setSuggestion('');
             setIsSubmitted(false);
         }
     };
 
     const handleSubmitSentence = async () => {
-    if (!currentWord) return;
+        if (!currentWord) return;
 
-    try {
-        const res = await fetch("http://localhost:8000/api/validate-sentence", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                user_id: 1,
-                word_id: currentWord.id,
+        try {
+            const res = await fetch("http://localhost:8000/api/practice", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    user_id: 1,
+                    word_id: currentWord.id,
+                    submitted_sentence: sentence,
+                }),
+            });
+
+            const data = await res.json();
+            console.log("API response:", data);
+
+            const newScore = parseFloat(data.score);
+            setScore(isNaN(newScore) ? 0 : newScore);
+            setSuggestion(data.suggestion || '');
+
+            if (newScore >= 8.0) {
+                setFeedbackColor("text-success");
+            } else if (newScore >= 6.0) {
+                setFeedbackColor("text-warning");
+            } else {
+                setFeedbackColor("text-danger");
+            }
+
+            // Save history
+            const history = JSON.parse(localStorage.getItem("wordHistory") || "[]");
+            history.push({
+                word: currentWord.word,
                 sentence: sentence,
-            }),
-        });
+                score: newScore,
+                difficulty: currentWord.difficulty_level,
+                suggestion: data.suggestion || '',
+                timestamp: new Date().toISOString(),
+            });
+            localStorage.setItem("wordHistory", JSON.stringify(history));
 
-        const data = await res.json();
+            setIsSubmitted(true);
 
-        const newScore = data.score;
-        setScore(newScore);
-
-        if (newScore >= 8.0) {
-            setFeedbackColor("text-success");
-        } else if (newScore >= 6.0) {
-            setFeedbackColor("text-warning");
-        } else {
-            setFeedbackColor("text-danger");
+        } catch (error) {
+            console.error("Error validating sentence:", error);
+            alert("API Error: cannot validate sentence");
         }
+    };
 
-        const history = JSON.parse(localStorage.getItem("wordHistory") || "[]");
-
-        history.push({
-            word: currentWord.word,
-            sentence: sentence,
-            score: newScore,
-            difficulty: currentWord.difficulty_level,
-            timestamp: new Date().toISOString(),
-        });
-
-        localStorage.setItem("wordHistory", JSON.stringify(history));
-
-        setIsSubmitted(true);
-
-    } catch (error) {
-        console.error("Error validating sentence:", error);
-        alert("API Error: cannot validate sentence");
-    }
-};
     const handleNextWord = () => {
         getRandomWord();
     };
@@ -132,8 +136,14 @@ export default function Home() {
                     ></textarea>
                 </div>
 
+                {isSubmitted && (
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-xl font-semibold mb-2">Score: <span className={`${feedbackColor}`}>{score?.toFixed(1)}</span></p>
+                        <p className="text-gray-700">Suggestion: {suggestion}</p>
+                    </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0">
-                    <p className="text-2xl font-bold">Score: <span className={`${feedbackColor} transition-colors duration-300`}>{score !== null ? score.toFixed(1) : "0.0"}</span></p>
                     <div className="flex space-x-3">
                         {!isSubmitted ? (
                             <button
